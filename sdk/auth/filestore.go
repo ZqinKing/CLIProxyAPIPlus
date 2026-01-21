@@ -239,6 +239,30 @@ func (s *FileTokenStore) readAuthFile(path, baseDir string) (*cliproxyauth.Auth,
 	if email, ok := metadata["email"].(string); ok && email != "" {
 		auth.Attributes["email"] = email
 	}
+
+	// Normalize excluded-models field from JSON to ensure it's []string in Metadata.
+	// This supports both "excluded-models" and "excluded_models" keys.
+	var rawExcluded any
+	if v, ok := metadata["excluded-models"]; ok {
+		rawExcluded = v
+	} else if v, ok := metadata["excluded_models"]; ok {
+		rawExcluded = v
+	}
+
+	if rawExcluded != nil {
+		if list, ok := rawExcluded.([]any); ok {
+			normalized := make([]string, 0, len(list))
+			for _, item := range list {
+				if s, okStr := item.(string); okStr {
+					normalized = append(normalized, s)
+				}
+			}
+			metadata["excluded-models"] = normalized
+		} else if list, ok := rawExcluded.([]string); ok {
+			metadata["excluded-models"] = list
+		}
+	}
+
 	return auth, nil
 }
 

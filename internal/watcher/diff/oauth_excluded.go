@@ -116,3 +116,32 @@ func SummarizeAmpModelMappings(mappings []config.AmpModelMapping) AmpModelMappin
 		count: len(entries),
 	}
 }
+
+// MergeExcludedModels merges two excluded-model lists, deduplicating and normalizing them.
+// It returns a new sorted slice.
+func MergeExcludedModels(list1, list2 []string) []string {
+	if len(list1) == 0 && len(list2) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(list1)+len(list2))
+	out := make([]string, 0, len(list1)+len(list2))
+
+	// Re-implementing add with lowercase normalization to be consistent with SummarizeExcludedModels
+	addLower := func(list []string) {
+		for _, entry := range list {
+			if trimmed := strings.TrimSpace(entry); trimmed != "" {
+				lower := strings.ToLower(trimmed)
+				if _, exists := seen[lower]; exists {
+					continue
+				}
+				seen[lower] = struct{}{}
+				out = append(out, lower)
+			}
+		}
+	}
+
+	addLower(list1)
+	addLower(list2)
+	sort.Strings(out)
+	return out
+}

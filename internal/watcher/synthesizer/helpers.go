@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/config"
@@ -58,30 +57,28 @@ func ApplyAuthExcludedModelsMeta(auth *coreauth.Auth, cfg *config.Config, perKey
 		return
 	}
 	authKindKey := strings.ToLower(strings.TrimSpace(authKind))
-	seen := make(map[string]struct{})
-	add := func(list []string) {
-		for _, entry := range list {
-			if trimmed := strings.TrimSpace(entry); trimmed != "" {
-				key := strings.ToLower(trimmed)
-				if _, exists := seen[key]; exists {
-					continue
-				}
-				seen[key] = struct{}{}
-			}
+	var excluded []string
+
+	// Get credential-level excluded models from metadata
+	if auth.Metadata != nil {
+		if list, ok := auth.Metadata["excluded-models"].([]string); ok {
+			excluded = list
 		}
 	}
+
 	if authKindKey == "apikey" {
-		add(perKey)
-	} else if cfg.OAuthExcludedModels != nil {
-		providerKey := strings.ToLower(strings.TrimSpace(auth.Provider))
-		add(cfg.OAuthExcludedModels[providerKey])
+		// For API keys, merge per-key excludes with credential-level excludes (if any)
+		excluded = diff.MergeExcludedModels(excluded, perKey)
+	} else {
+		// For OAuth, merge credential-level excludes with provider-level config
+		if cfg.OAuthExcludedModels != nil {
+			providerKey := strings.ToLower(strings.TrimSpace(auth.Provider))
+			providerExcluded := cfg.OAuthExcludedModels[providerKey]
+			excluded = diff.MergeExcludedModels(excluded, providerExcluded)
+		}
 	}
-	combined := make([]string, 0, len(seen))
-	for k := range seen {
-		combined = append(combined, k)
-	}
-	sort.Strings(combined)
-	hash := diff.ComputeExcludedModelsHash(combined)
+
+	hash := diff.ComputeExcludedModelsHash(excluded)
 	if auth.Attributes == nil {
 		auth.Attributes = make(map[string]string)
 	}

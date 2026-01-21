@@ -292,6 +292,16 @@ codex-instructions-enabled: false
 #     - "*flash*"            # wildcard matching substring (e.g. gemini-2.5-flash-lite)
 #   vertex:
 #     - "gemini-3-pro-preview"
+#
+# NOTE: OAuth providers (gemini-cli, vertex, claude, iflow, etc.) also support credential-level
+# exclusion by adding an "excluded-models" list to the auth JSON file.
+# The final excluded list is the union of this provider-level config and the credential-level config.
+# Example auth file (e.g. ~/.cli-proxy-api/gemini-cli-user.json):
+# {
+#   "type": "gemini-cli",
+#   "email": "user@example.com",
+#   "excluded-models": ["gemini-3-pro-preview", "*-preview"]
+# }
 #   aistudio:
 #     - "gemini-3-pro-preview"
 #   antigravity:
