@@ -176,8 +176,8 @@ func (c *SocialAuthClient) startWebCallbackServer(ctx context.Context, expectedS
 	return redirectURI, resultChan, nil
 }
 
-// generatePKCE generates PKCE code verifier and challenge.
-func generatePKCE() (verifier, challenge string, err error) {
+ // GeneratePKCECodes generates PKCE code verifier and challenge.
+func GeneratePKCECodes() (verifier, challenge string, err error) {
 	// Generate 32 bytes of random data for verifier
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -201,11 +201,11 @@ func generateStateParam() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// buildLoginURL constructs the Kiro OAuth login URL.
+ // BuildAuthURL constructs the Kiro OAuth login URL.
 // The login endpoint expects a GET request with query parameters.
 // Format: /login?idp=Google&redirect_uri=...&code_challenge=...&code_challenge_method=S256&state=...&prompt=select_account
 // The prompt=select_account parameter forces the account selection screen even if already logged in.
-func (c *SocialAuthClient) buildLoginURL(provider, redirectURI, codeChallenge, state string) string {
+func (c *SocialAuthClient) BuildAuthURL(provider, redirectURI, codeChallenge, state string) string {
 	return fmt.Sprintf("%s/login?idp=%s&redirect_uri=%s&code_challenge=%s&code_challenge_method=S256&state=%s&prompt=select_account",
 		kiroAuthServiceEndpoint,
 		provider,
@@ -324,7 +324,7 @@ func (c *SocialAuthClient) LoginWithSocial(ctx context.Context, provider SocialP
 	fmt.Println("\nSetting up authentication...")
 
 	// Step 2: Generate PKCE codes
-	codeVerifier, codeChallenge, err := generatePKCE()
+	codeVerifier, codeChallenge, err := GeneratePKCECodes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate PKCE: %w", err)
 	}
@@ -343,7 +343,7 @@ func (c *SocialAuthClient) LoginWithSocial(ctx context.Context, provider SocialP
 	log.Debugf("kiro social auth: callback server started at %s", redirectURI)
 
 	// Step 5: Build the login URL using HTTP redirect URI
-	authURL := c.buildLoginURL(providerName, redirectURI, codeChallenge, state)
+	authURL := c.BuildAuthURL(providerName, redirectURI, codeChallenge, state)
 
 	// Set incognito mode based on config (defaults to true for Kiro, can be overridden with --no-incognito)
 	// Incognito mode enables multi-account support by bypassing cached sessions

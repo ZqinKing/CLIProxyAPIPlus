@@ -131,7 +131,7 @@ func (h *OAuthWebHandler) startSocialAuth(c *gin.Context, method string) {
 		return
 	}
 
-	codeVerifier, codeChallenge, err := generatePKCE()
+	codeVerifier, codeChallenge, err := GeneratePKCECodes()
 	if err != nil {
 		h.renderError(c, "Failed to generate PKCE parameters")
 		return
@@ -147,7 +147,7 @@ func (h *OAuthWebHandler) startSocialAuth(c *gin.Context, method string) {
 	}
 
 	redirectURI := h.getSocialCallbackURL(c)
-	authURL := socialClient.buildLoginURL(provider, redirectURI, codeChallenge, stateID)
+	authURL := socialClient.BuildAuthURL(provider, redirectURI, codeChallenge, stateID)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 

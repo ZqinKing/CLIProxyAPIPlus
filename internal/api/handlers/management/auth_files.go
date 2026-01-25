@@ -3,9 +3,7 @@ package management
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,7 +11,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -2455,7 +2452,7 @@ func (h *Handler) RequestKiroToken(c *gin.Context) {
 			socialClient := kiroauth.NewSocialAuthClient(h.cfg)
 
 			// Generate PKCE codes
-			codeVerifier, codeChallenge, errPKCE := generateKiroPKCE()
+			codeVerifier, codeChallenge, errPKCE := kiroauth.GeneratePKCECodes()
 			if errPKCE != nil {
 				log.Errorf("Failed to generate PKCE: %v", errPKCE)
 				SetOAuthSessionError(state, "Failed to generate PKCE")
@@ -2463,13 +2460,7 @@ func (h *Handler) RequestKiroToken(c *gin.Context) {
 			}
 
 			// Build login URL
-			authURL := fmt.Sprintf("%s/login?idp=%s&redirect_uri=%s&code_challenge=%s&code_challenge_method=S256&state=%s&prompt=select_account",
-				"https://prod.us-east-1.auth.desktop.kiro.dev",
-				provider,
-				url.QueryEscape(kiroauth.KiroRedirectURI),
-				codeChallenge,
-				state,
-			)
+			authURL := socialClient.BuildAuthURL(provider, kiroauth.KiroRedirectURI, codeChallenge, state)
 
 			// Store auth URL for frontend.
 			// Using "|" as separator because URLs contain ":".
@@ -2576,18 +2567,4 @@ func (h *Handler) RequestKiroToken(c *gin.Context) {
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid method, use 'aws', 'google', or 'github'"})
 	}
-}
-
-// generateKiroPKCE generates PKCE code verifier and challenge for Kiro OAuth.
-func generateKiroPKCE() (verifier, challenge string, err error) {
-	b := make([]byte, 32)
-	if _, errRead := io.ReadFull(rand.Reader, b); errRead != nil {
-		return "", "", fmt.Errorf("failed to generate random bytes: %w", errRead)
-	}
-	verifier = base64.RawURLEncoding.EncodeToString(b)
-
-	h := sha256.Sum256([]byte(verifier))
-	challenge = base64.RawURLEncoding.EncodeToString(h[:])
-
-	return verifier, challenge, nil
 }
